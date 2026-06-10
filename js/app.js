@@ -220,12 +220,25 @@ function _scanLoop() {
     canvas.width  = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
+
+    // Tenter 1 : image originale
+    const original = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let code = jsQR(original.data, canvas.width, canvas.height, { inversionAttempts: 'attemptBoth' });
+
+    // Tenter 2 : binarisation pour améliorer lecture sur écrans lumineux
+    if (!code) {
+      const binData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < binData.data.length; i += 4) {
+        const avg = (binData.data[i] + binData.data[i+1] + binData.data[i+2]) / 3;
+        const val = avg > 140 ? 255 : 0;
+        binData.data[i] = binData.data[i+1] = binData.data[i+2] = val;
+      }
+      code = jsQR(binData.data, canvas.width, canvas.height, { inversionAttempts: 'attemptBoth' });
+    }
+
     if (code && code.data) {
       clearInterval(_scanInterval);
       _stopCamera();
-      // importFromQR est async — utiliser then/catch
       SyncService.importFromQR(code.data).then(function(result) {
         if (result.ok) {
           _showWelcome(result.prenom);
