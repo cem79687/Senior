@@ -2,8 +2,7 @@
 // Utilise SupabaseService (chargé avant ce fichier)
 
 const STORAGE_KEY_SENIOR = 'medisafe_senior_config';
-// Utiliser MOMENTS depuis SupabaseService
-const MOMENTS = SupabaseService ? SupabaseService.MOMENTS : { fasting:'🌅', before:'⏱️', during:'🍽️', after:'✅', bedtime:'🌙' };
+// MOMENTS est défini dans supabase.js — pas de redéclaration ici
 
 // Config senior stockée localement : { patientId, aidantId, prenom, nom }
 function getSeniorConfig() {
@@ -169,5 +168,5 @@ window.SyncService = {
   getSeniorProfile, importFromQR,
   getTodayMeds, confirmTaken,
   subscribeToUpdates,
-  MOMENTS
+  get MOMENTS() { return window.SupabaseService ? window.SupabaseService.MOMENTS : {}; }
 };
