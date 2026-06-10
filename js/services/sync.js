@@ -55,7 +55,7 @@ async function importFromQR(encoded) {
 
     // Tenter une connexion Supabase pour passer en mode online
     try {
-      const sb = await SupabaseService.getClient();
+      const sb = await SupabaseService.ensureSession();
       const { data } = await sb.from('patients')
         .select('id, prenom, nom')
         .eq('id', payload.id)
