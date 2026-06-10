@@ -129,7 +129,7 @@ function renderScan() {
   document.getElementById('app').innerHTML =
     '<div style="min-height:100vh;display:flex;flex-direction:column;background:#000">' +
       '<div style="position:relative;flex:1;overflow:hidden">' +
-        '<video id="qr-video" style="width:100%;height:100%;object-fit:cover" playsinline autoplay muted></video>' +
+        '<video id="qr-video" style="width:100%;height:100%;object-fit:cover" playsinline webkit-playsinline autoplay muted></video>' +
         // Cadre de visée
         '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">' +
           '<div style="width:240px;height:240px;border:3px solid #fff;border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.5)">' +
@@ -171,7 +171,13 @@ function _startCamera() {
     return;
   }
 
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+  navigator.mediaDevices.getUserMedia({ 
+    video: { 
+      facingMode: { ideal: 'environment' },
+      width:  { ideal: 1280 },
+      height: { ideal: 720 }
+    } 
+  })
     .then(function(stream) {
       _cameraStream = stream;
       const video = document.getElementById('qr-video');
@@ -215,7 +221,7 @@ function _scanLoop() {
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+    const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'attemptBoth' });
     if (code && code.data) {
       clearInterval(_scanInterval);
       _stopCamera();
