@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes, maximum-scale=5" />
+  <meta name="theme-color" content="#185FA5" />
+  <meta name="description" content="MediSafe — vos médicaments du jour" />
+
+  <!-- iOS PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MediSafe" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+  <!-- Favicon + manifest -->
+  <link rel="icon" href="icons/favicon.ico" />
+  <link rel="manifest" href="manifest.json" />
+
+  <title>MediSafe</title>
+
+  <!-- Tabler Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/senior.css" />
+
+  <style>
+    /* Anti-zoom iOS sur les inputs */
+    input, select, textarea { font-size: 16px !important; }
+    button { touch-action: manipulation; -webkit-touch-callout: none; }
+  </style>
+</head>
+<body>
+
+  <div id="app">
+    <div class="splash">
+      <div class="splash-logo">💊</div>
+      <div class="splash-title" style="color:#fff">Chargement...</div>
+    </div>
+  </div>
+
+  <script src="js/services/supabase.js"></script>
+  <script src="js/services/sync.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    // Enregistrement Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(function(e) {
+        console.warn('SW registration failed:', e);
+      });
+      // Écouter les messages du SW (vérification prises)
+      navigator.serviceWorker.addEventListener('message', function(e) {
+        if (e.data && e.data.type === 'CHECK_MEDS') {
+          _checkUpcomingMeds();
+        }
+      });
+    }
+
+    // Vérification locale des prises imminentes (toutes les 60s)
+    function _checkUpcomingMeds() {
+      if (!window.SyncService || !window._seniorProfile) return;
+      try {
+        const meds    = SyncService.getTodayMeds(window._seniorProfile.id);
+        const pending = meds.filter(function(m) { return m.status === 'pending'; });
+        pending.forEach(function(m) {
+          const diff = new Date(m.scheduledDatetime) - new Date();
+          if (diff > 0 && diff < 300000) { // dans les 5 prochaines minutes
+            if (Notification.permission === 'granted') {
+              new Notification('MediSafe — Rappel', {
+                body: 'Il est l\'heure de prendre : ' + m.name,
+                icon: 'icons/icon-192.png',
+                tag:  'med-' + m.medId + '-' + m.scheduledDatetime
+              });
+            }
+          }
+        });
+      } catch(e) {}
+    }
+    setInterval(_checkUpcomingMeds, 60000);
+  </script>
+
+</body>
+</html>

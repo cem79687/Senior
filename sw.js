@@ -1,7 +1,7 @@
 // sw.js — MediSafe Senior Service Worker
 const CACHE_NAME = 'medisafe-senior-v1';
 const ASSETS = [
-  'patients.html',
+  'index.html',
   'css/variables.css',
   'css/senior.css',
   'js/services/sync.js',
@@ -55,7 +55,7 @@ self.addEventListener('push', function(e) {
       badge: 'icons/icon-192.png',
       tag:   'medisafe-reminder',
       renotify: true,
-      data:  { url: 'patients.html' }
+      data:  { url: 'index.html' }
     })
   );
 });
@@ -66,9 +66,9 @@ self.addEventListener('notificationclick', function(e) {
   e.waitUntil(
     clients.matchAll({ type:'window', includeUncontrolled:true }).then(function(list) {
       for (var c of list) {
-        if (c.url.includes('patients.html') && 'focus' in c) return c.focus();
+        if (c.url.includes('index.html') && 'focus' in c) return c.focus();
       }
-      return clients.openWindow('patients.html');
+      return clients.openWindow('index.html');
     })
   );
 });
