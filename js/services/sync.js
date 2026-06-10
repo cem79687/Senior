@@ -42,18 +42,17 @@ async function importFromQR(encoded) {
   try {
     const json    = decodeURIComponent(escape(atob(encoded)));
     const payload = JSON.parse(json);
-    if (!payload.v || !payload.id) throw new Error('QR invalide');
+    if (!payload.id) throw new Error('QR invalide');
 
-    // Toujours sauvegarder les données offline comme fallback
     const config = {
-      patientId:   payload.id,
-      prenom:      payload.prenom,
-      nom:         payload.nom,
-      offline:     true, // par défaut offline
-      medications: payload.medications || []
+      patientId: payload.id,
+      prenom:    payload.prenom || '',
+      nom:       payload.nom    || '',
+      offline:   false,
+      medications: []
     };
 
-    // Tenter une connexion Supabase pour passer en mode online
+    // Vérifier que le patient existe dans Supabase
     try {
       const sb = await SupabaseService.ensureSession();
       const { data } = await sb.from('patients')
@@ -61,13 +60,12 @@ async function importFromQR(encoded) {
         .eq('id', payload.id)
         .single();
       if (data) {
-        config.offline = false; // patient trouvé → mode online
-        config.prenom  = data.prenom;
-        config.nom     = data.nom;
+        config.prenom = data.prenom;
+        config.nom    = data.nom;
       }
     } catch(e) {
-      // Supabase inaccessible → mode offline avec données QR
       console.warn('[SyncService] Mode offline activé:', e.message);
+      config.offline = true;
     }
 
     setSeniorConfig(config);
