@@ -102,14 +102,23 @@ function _showCodeInput() {
   document.getElementById('btn-back').addEventListener('click', function() { Router.go('onboarding'); });
   document.getElementById('btn-validate').addEventListener('click', function() {
     const code = document.getElementById('qr-code-input').value.trim();
+    const btn  = document.getElementById('btn-validate');
     if (!code) return;
-    const result = SyncService.importFromQR(code);
-    if (result.ok) {
-      _seniorProfile = SyncService.getSeniorProfile();
-      _showWelcome(result.prenom);
-    } else {
+    btn.textContent = 'Validation...';
+    btn.disabled    = true;
+    SyncService.importFromQR(code).then(function(result) {
+      if (result.ok) {
+        _showWelcome(result.prenom);
+      } else {
+        document.getElementById('code-error').style.display = 'block';
+        btn.textContent = 'Valider';
+        btn.disabled    = false;
+      }
+    }).catch(function() {
       document.getElementById('code-error').style.display = 'block';
-    }
+      btn.textContent = 'Valider';
+      btn.disabled    = false;
+    });
   });
 }
 
@@ -155,6 +164,13 @@ let _cameraStream = null;
 let _scanInterval = null;
 
 function _startCamera() {
+  // Vérifier support caméra
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('Caméra non disponible sur cet appareil', 'warning');
+    _showCodeInput();
+    return;
+  }
+
   navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
     .then(function(stream) {
       _cameraStream = stream;
@@ -168,6 +184,7 @@ function _startCamera() {
         const s = document.createElement('script');
         s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js';
         s.onload = function() { _scanLoop(); };
+        s.onerror = function() { showToast('Erreur chargement scanner', 'error'); _showCodeInput(); };
         document.head.appendChild(s);
       } else {
         _scanLoop();
@@ -175,7 +192,14 @@ function _startCamera() {
     })
     .catch(function(err) {
       console.error('Camera error:', err);
-      _showCodeInput(); // fallback saisie manuelle
+      if (err.name === 'NotAllowedError') {
+        showToast('Permission caméra refusée — saisissez le code manuellement', 'warning');
+      } else if (err.name === 'NotFoundError') {
+        showToast('Aucune caméra détectée', 'warning');
+      } else {
+        showToast('Caméra indisponible — saisissez le code manuellement', 'warning');
+      }
+      _showCodeInput();
     });
 }
 
@@ -195,13 +219,19 @@ function _scanLoop() {
     if (code && code.data) {
       clearInterval(_scanInterval);
       _stopCamera();
-      const result = SyncService.importFromQR(code.data);
-      if (result.ok) {
-        _seniorProfile = SyncService.getSeniorProfile();
-        _showWelcome(result.prenom);
-      } else {
-        showError('QR code invalide. Demandez un nouveau QR à votre aidant.');
-      }
+      // importFromQR est async — utiliser then/catch
+      SyncService.importFromQR(code.data).then(function(result) {
+        if (result.ok) {
+          _showWelcome(result.prenom);
+        } else {
+          showToast('QR code invalide — demandez un nouveau QR à votre aidant', 'error');
+          Router.go('onboarding');
+        }
+      }).catch(function(e) {
+        console.error('importFromQR error:', e);
+        showToast('Erreur lors du scan — réessayez', 'error');
+        Router.go('onboarding');
+      });
     }
   }, 250);
 }
